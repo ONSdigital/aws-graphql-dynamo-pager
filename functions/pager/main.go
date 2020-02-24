@@ -129,8 +129,7 @@ func HandleRequest(ctx context.Context, p payload) (string, error) {
 	// - No more data (empty LastEvaluatedKey)
 	// - Read enough items to fulfil the given `limit`
 	var found int64 = 0
-	for int64(len(resp.Edges)) < p.First {
-
+	for {
 		result, err := svc.ScanWithContext(ctx, input)
 		if err != nil {
 			return "", err
@@ -166,7 +165,7 @@ func HandleRequest(ctx context.Context, p payload) (string, error) {
 				// In this case we return the cursor of the last item
 				resp.PageInfo.HasNext = true
 				resp.PageInfo.EndCursor = cursor
-				break
+				return responseToJSON(&resp)
 			}
 		}
 
@@ -186,6 +185,10 @@ func HandleRequest(ctx context.Context, p payload) (string, error) {
 	// ...
 	// ...
 
+	return responseToJSON(&resp)
+}
+
+func responseToJSON(resp *response) (string, error) {
 	output, err := json.Marshal(resp)
 	if err != nil {
 		return "", err
