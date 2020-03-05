@@ -68,10 +68,6 @@ func HandleRequest(ctx context.Context, p payload) (string, error) {
 		return "", errors.New("request missing tableName")
 	}
 
-	if p.Filter == nil {
-		return "", errors.New("request missing filter expression")
-	}
-
 	if p.Before != "" || p.Last > 0 {
 		return "", errors.New("backwards paging not yet supported")
 	}
@@ -90,13 +86,17 @@ func HandleRequest(ctx context.Context, p payload) (string, error) {
 	svc := dynamodb.New(session.New())
 
 	input := &dynamodb.ScanInput{
-		ExpressionAttributeNames:  p.Filter.Names,
-		ExpressionAttributeValues: p.Filter.Values,
-		FilterExpression:          aws.String(p.Filter.Expression),
-		TableName:                 aws.String(p.TableName),
-		Limit:                     aws.Int64(p.First),
+		TableName: aws.String(p.TableName),
+		Limit:     aws.Int64(p.First),
+	}
+	if p.Filter != nil {
+		// Add the filter expression if one has been supplied on the query
+		input.FilterExpression = aws.String(p.Filter.Expression)
+		input.ExpressionAttributeNames = p.Filter.Names
+		input.ExpressionAttributeValues = p.Filter.Values
 	}
 	if p.After != "" {
+		// Add the cursor if one has been specified as a start point
 		after, err := decodeKey(p.After)
 		if err != nil {
 			return "", errors.Wrap(err, "unable to decode 'after' cursor")
